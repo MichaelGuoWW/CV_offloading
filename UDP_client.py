@@ -83,7 +83,7 @@ while True:
 	end_time = time.time()
 	print(end_time - start_time)
 	
-	# TODO: send prediction back to server
+	# send prediction back to server
 	prediction_json = json.dumps(prediction)
 	client_socket.sendto(prediction_json.encode(), (host_ip,port))
 	  
@@ -91,15 +91,5 @@ while True:
 	cv2.imshow('Object Detection', frame)
 		
 	key = cv2.waitKey(1) & 0xFF
-	if key == ord('q'):
-		client_socket.close()
-		break
-	if cnt == frames_to_count:
-		try:
-			fps = round(frames_to_count/(time.time()-st))
-			st=time.time()
-			cnt=0
-		except:
-			pass
-	cnt+=1
+
 

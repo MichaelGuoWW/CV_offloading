@@ -5,9 +5,39 @@ import numpy as np
 import time
 import base64
 import json
+import torch
+import torchvision.transforms as transforms
+import torchvision.models as models
+from PIL import Image, ImageDraw
 
 # initialize parameters
 BROADCASTED = False    # Used for the initial handshake procedure
+BUFF_SIZE = 65536
+EDGE_HOST_IP = '192.168.0.142'
+PORT = 8080
+WIDTH=400       # Width of the frame to be sent
+DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+# Load pre-trained model
+model = models.detection.fasterrcnn_resnet50_fpn(pretrained=True)
+model.eval()
+model.to(DEVICE)
+
+# Define the labels for the COCO dataset
+COCO_INSTANCE_CATEGORY_NAMES = [
+	'__background__', 'person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus',
+	'train', 'truck', 'boat', 'traffic light', 'fire hydrant', 'N/A', 'stop sign',
+	'parking meter', 'bench', 'bird', 'cat', 'dog', 'horse', 'sheep', 'cow',
+	'elephant', 'bear', 'zebra', 'giraffe', 'N/A', 'backpack', 'umbrella', 'N/A', 'N/A',
+	'handbag', 'tie', 'suitcase', 'frisbee', 'skis', 'snowboard', 'sports ball',
+	'kite', 'baseball bat', 'baseball glove', 'skateboard', 'surfboard', 'tennis racket',
+	'bottle', 'N/A', 'wine glass', 'cup', 'fork', 'knife', 'spoon', 'bowl',
+	'banana', 'apple', 'sandwich', 'orange', 'broccoli', 'carrot', 'hot dog', 'pizza',
+	'donut', 'cake', 'chair', 'couch', 'potted plant', 'bed', 'N/A', 'dining table',
+	'N/A', 'N/A', 'toilet', 'N/A', 'tv', 'laptop', 'mouse', 'remote', 'keyboard', 'cell phone',
+	'microwave', 'oven', 'toaster', 'sink', 'refrigerator', 'N/A', 'book',
+	'clock', 'vase', 'scissors', 'teddy bear', 'hair drier', 'toothbrush'
+]
 
 # read in camera data at framerate of 30
 def gstreamer_pipeline(
@@ -36,58 +66,87 @@ def gstreamer_pipeline(
         )
     )
 
+def detect_objects(image):
+	# Convert image to tensor
+	transform = transforms.Compose([transforms.ToTensor()])
+	image = transform(image).to(DEVICE)
+	# Perform inference
+	with torch.no_grad():
+		prediction = model([image])
+	return prediction
 
-BUFF_SIZE = 65536
-server_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+# Function to draw bounding boxes and labels on the image
+def draw_boxes(image, prediction):
+	draw = ImageDraw.Draw(image)
+	for score, label, box in zip(prediction[0]['scores'], prediction[0]['labels'], prediction[0]['boxes']):
+		if score > 0.5:  # Confidence threshold
+			box = [round(i.item()) for i in box]
+			draw.rectangle(box, outline='red', width=3)
+			draw.text((box[0], box[1]), COCO_INSTANCE_CATEGORY_NAMES[label.item()], fill='red')
+	return image
+
+
+# >>>>>>>>>>>>>>>>>> BRODACASTING & TRANSMITTING >>>>>>>>>>>>>>>>>>>>>>
+# setting up onboard_host info
+edge = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
 # define the socket buffer size; buffer size should be big enough
-server_socket.setsockopt(socket.SOL_SOCKET,socket.SO_RCVBUF,BUFF_SIZE)
+edge.setsockopt(socket.SOL_SOCKET,socket.SO_RCVBUF,BUFF_SIZE)
 # enable reuse of port 
-server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, True)
+edge.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, True)
 
-# getting host server ip
-host_ip = '192.168.0.142'
-port = 9999
-socket_address = (host_ip,port)
-server_socket.bind(socket_address)
+# setting up transmitting port IP --> ONBOARD
+socket_address = (EDGE_HOST_IP,PORT)
+edge.bind(socket_address)
 print('Begin listening at:',socket_address)
 
-# BROADCAST MESSAGE server IP to be broadcasted and setup
-server_ip = (host_ip + " " + str(port)).encode()
+# BROADCASTING onboard server IP toward offboard
+edge_info = (EDGE_HOST_IP + " " + str(PORT)).encode()    # BROADCAST MESSAGE onboard host IP to be broadcasted, parse in offboard host
+edge.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+edge.sendto(edge_info, ('<broadcast>', PORT))
+BROADCASTED = True
+print("server IP information sent to client")
+msg,EDGE_SERVER_IP = edge.recvfrom(BUFF_SIZE)     # ------> BLOCKING STATE, confirming the broadcast of host IP
+edge.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, False)    # disable broadcasting mode after sent
 
+# TRANSMITTING INITIALIZED
+# setting up connection between onboard and offboard
+msg,EDGE_SERVER_IP = edge.recvfrom(BUFF_SIZE)    # ------> BLOCKING STATE wait for connection
+print('GOT connection from ',EDGE_SERVER_IP)
+
+# CAPTURING VIDEO
 vid = cv2.VideoCapture(gstreamer_pipeline(), cv2.CAP_GSTREAMER) 
 fps,st,frames_to_count,cnt = (0,0,20,0)
 
-while True:
-    msg,client_addr = server_socket.recvfrom(BUFF_SIZE)
-    print('GOT connection from ',client_addr)
-    WIDTH=400
-    while(vid.isOpened()):
-        # BROADCAST the host-ip info toward client
-        if (not BROADCASTED):
-            server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-            server_socket.sendto(message, ('<broadcast>', port))
-            BROADCASTED = True
-            print("server IP information sent to client")
-            server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, False)    # disable socket after send
-            continue
+# variable indicating if it should offload or not, ALWAYS ASSUME NO OFFLOADING
+off_loading = False
 
-        # TODO: 
-        # write a code to decide if the offloading should happen or not
-        # testing of the connection by send a few frame of data toward client
+while(vid.isOpened()):
+    # TODO: 
+    # write a code to decide if the offloading should happen or not
+    # testing of the connection by send a few frame of data toward client
 
-        _,frame = vid.read()
+    # TODO: TIME PROFILING of RTT of a single frame
+	
+    # TODO: CPU & RAM PROFILING of edge
+	
+    # TODO: CPU & RAM PROFILING of server
+
+    _, frame = vid.read()
+
+    # computing onboard if not offloaded
+    if (not off_loading):
+        start_time = time.time()
+        pil_image = Image.fromarray(frame)
+        prediction = detect_objects(pil_image)
+        end_time = time.time()
+        print(end_time - start_time)
+    # decode the prediction send from the server
+    else:
         frame = imutils.resize(frame,width=WIDTH)
-        encoded,buffer = cv2.imencode('.jpg',frame,[cv2.IMWRITE_JPEG_QUALITY,80])
-        message = base64.b64encode(buffer)
-        server_socket.sendto(message,client_addr)
-        frame = cv2.putText(frame,'FPS: '+str(fps),(10,40),cv2.FONT_HERSHEY_SIMPLEX,0.7,(0,0,255),2)
-        cv2.imshow('TRANSMITTING VIDEO',frame)
-
-        # TODO:
-        # code used to recieve prediction results 
+        encoded, buffer = cv2.imencode('.jpg',frame,[cv2.IMWRITE_JPEG_QUALITY,80])
+        ec_img = base64.b64encode(buffer)
+        edge.sendto(ec_img, EDGE_SERVER_IP)
+        # cv2.imshow('TRANSMITTING VIDEO',frame)
+		
         
-        # code exit on q
-        key = cv2.waitKey(1) & 0xFF
-        if key == ord('q'):
-            server_socket.close()
-            break
+
