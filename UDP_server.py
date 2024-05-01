@@ -152,7 +152,7 @@ while(vid.isOpened()):
 		# waiting for the object detection result sended back from server
         try:
             prediction_result, _ = edge.recvfrom(BUFF_SIZE)
-            prediction = pickle.load(prediction_result)
+            prediction = pickle.loads(prediction_result)
             end_time = time.time()
             print("OFFLOADING TIME: ", end_time - start_time)
         except socket.timeout:
