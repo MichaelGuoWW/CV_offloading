@@ -10,7 +10,7 @@ import torchvision.transforms as transforms
 import torchvision.models as models
 from PIL import Image, ImageDraw
 import numpy as np
-import json
+import pickle
 
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -64,7 +64,7 @@ client_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
 host_name = socket.gethostname()
 host_ip = '192.168.0.142'#  socket.gethostbyname(host_name)
 print(host_ip)
-port = 9999
+port = 8080
 message = b'REQUEST from client'
 
 client_socket.sendto(message,(host_ip,port))
@@ -84,9 +84,10 @@ while True:
 	print(end_time - start_time)
 	
 	# send prediction back to server
-	prediction_json = json.dumps(prediction)
-	client_socket.sendto(prediction_json.encode(), (host_ip,port))
-	  
+	serialized_tensor = pickle.dumps(prediction)
+	client_socket.sendto(serialized_tensor, (host_ip,port))
+	
+	# show the predicted 
 	frame = cv2.putText(frame,'FPS: '+str(fps),(10,40),cv2.FONT_HERSHEY_SIMPLEX,0.7,(0,0,255),2)
 	cv2.imshow('Object Detection', frame)
 		

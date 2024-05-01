@@ -4,7 +4,7 @@ import cv2, imutils, socket
 import numpy as np
 import time
 import base64
-import json
+import pickle
 import torch
 import torchvision.transforms as transforms
 import torchvision.models as models
@@ -99,14 +99,14 @@ socket_address = (EDGE_HOST_IP,PORT)
 edge.bind(socket_address)
 print('Begin listening at:',socket_address)
 
-# BROADCASTING onboard server IP toward offboard
-edge_info = (EDGE_HOST_IP + " " + str(PORT)).encode()    # BROADCAST MESSAGE onboard host IP to be broadcasted, parse in offboard host
-edge.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-edge.sendto(edge_info, ('<broadcast>', PORT))
-BROADCASTED = True
-print("server IP information sent to client")
-msg,EDGE_SERVER_IP = edge.recvfrom(BUFF_SIZE)     # ------> BLOCKING STATE, confirming the broadcast of host IP
-edge.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, False)    # disable broadcasting mode after sent
+# # BROADCASTING onboard server IP toward offboard
+# edge_info = (EDGE_HOST_IP + " " + str(PORT)).encode()    # BROADCAST MESSAGE onboard host IP to be broadcasted, parse in offboard host
+# edge.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+# edge.sendto(edge_info, ('<broadcast>', PORT))
+# BROADCASTED = True
+# print("server IP information sent to client")
+# msg,EDGE_SERVER_IP = edge.recvfrom(BUFF_SIZE)     # ------> BLOCKING STATE, confirming the broadcast of host IP
+# edge.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 0)    # disable broadcasting mode after sent
 
 # TRANSMITTING INITIALIZED
 # setting up connection between onboard and offboard
@@ -140,13 +140,22 @@ while(vid.isOpened()):
         prediction = detect_objects(pil_image)
         end_time = time.time()
         print(end_time - start_time)
-    # decode the prediction send from the server
+    # OFFLOADING PROCESS
     else:
+		# sending frame to server
+        start_time = time.time()
         frame = imutils.resize(frame,width=WIDTH)
         encoded, buffer = cv2.imencode('.jpg',frame,[cv2.IMWRITE_JPEG_QUALITY,80])
         ec_img = base64.b64encode(buffer)
         edge.sendto(ec_img, EDGE_SERVER_IP)
-        # cv2.imshow('TRANSMITTING VIDEO',frame)
+		# waiting for the object detection result sended back from server
+        prediction_result, _ = edge.recvfrom(BUFF_SIZE)
+        prediction = pickle.load(prediction_result)
+        end_time = time.time()
+        print("OFFLOADING TIME: ", end_time - start_time)
+		
+        
+        
 		
         
 
