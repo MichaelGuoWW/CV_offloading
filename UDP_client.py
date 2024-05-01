@@ -95,7 +95,7 @@ while True:
 		cv2.imshow('Object Detection', frame)
 			
 	except socket.timeout:
-		print()
+		print("LOST packets")
 		continue
 
 

@@ -41,30 +41,30 @@ COCO_INSTANCE_CATEGORY_NAMES = [
 
 # read in camera data at framerate of 30
 def gstreamer_pipeline(
-    capture_width=1920,
-    capture_height=1080,
-    display_width=960,
-    display_height=540,
-    framerate=30,
-    flip_method=0,
+	capture_width=1920,
+	capture_height=1080,
+	display_width=960,
+	display_height=540,
+	framerate=30,
+	flip_method=0,
 ):
-    return (
-        "nvarguscamerasrc ! "
-        "video/x-raw(memory:NVMM), "
-        "width=(int)%d, height=(int)%d, framerate=(fraction)%d/1 ! "
-        "nvvidconv flip-method=%d ! "
-        "video/x-raw, width=(int)%d, height=(int)%d, format=(string)BGRx ! "
-        "videoconvert ! "
-        "video/x-raw, format=(string)BGR ! appsink drop=True"
-        % (
-            capture_width,
-            capture_height,
-            framerate,
-            flip_method,
-            display_width,
-            display_height,
-        )
-    )
+	return (
+		"nvarguscamerasrc ! "
+		"video/x-raw(memory:NVMM), "
+		"width=(int)%d, height=(int)%d, framerate=(fraction)%d/1 ! "
+		"nvvidconv flip-method=%d ! "
+		"video/x-raw, width=(int)%d, height=(int)%d, format=(string)BGRx ! "
+		"videoconvert ! "
+		"video/x-raw, format=(string)BGR ! appsink drop=True"
+		% (
+			capture_width,
+			capture_height,
+			framerate,
+			flip_method,
+			display_width,
+			display_height,
+		)
+	)
 
 def detect_objects(image):
 	# Convert image to tensor
@@ -122,45 +122,45 @@ off_loading = True
 
 edge.settimeout(0.1)
 while(vid.isOpened()):
-    # TODO: 
-    # write a code to decide if the offloading should happen or not
-    # testing of the connection by send a few frame of data toward client
+	# TODO: 
+	# write a code to decide if the offloading should happen or not
+	# testing of the connection by send a few frame of data toward client
 
-    # TODO: TIME PROFILING of RTT of a single frame
+	# TODO: TIME PROFILING of RTT of a single frame
 	
-    # TODO: CPU & RAM PROFILING of edge
+	# TODO: CPU & RAM PROFILING of edge
 	
-    # TODO: CPU & RAM PROFILING of server
+	# TODO: CPU & RAM PROFILING of server
 
-    _, frame = vid.read()
+	_, frame = vid.read()
 
-    # computing onboard if not offloaded
-    if (not off_loading):
-        start_time = time.time()
-        pil_image = Image.fromarray(frame)
-        prediction = detect_objects(pil_image)
-        end_time = time.time()
-        print(end_time - start_time)
-    # OFFLOADING PROCESS
-    else:
+	# computing onboard if not offloaded
+	if (not off_loading):
+		start_time = time.time()
+		pil_image = Image.fromarray(frame)
+		prediction = detect_objects(pil_image)
+		end_time = time.time()
+		print(end_time - start_time)
+	# OFFLOADING PROCESS
+	else:
 		# sending frame to server
-        start_time = time.time()
-        frame = imutils.resize(frame,width=WIDTH)
-        encoded, buffer = cv2.imencode('.jpg',frame,[cv2.IMWRITE_JPEG_QUALITY,80])
-        ec_img = base64.b64encode(buffer)
-        edge.sendto(ec_img, EDGE_SERVER_IP)
+		start_time = time.time()
+		frame = imutils.resize(frame,width=WIDTH)
+		encoded, buffer = cv2.imencode('.jpg',frame,[cv2.IMWRITE_JPEG_QUALITY,80])
+		ec_img = base64.b64encode(buffer)
+		edge.sendto(ec_img, EDGE_SERVER_IP)
 		# waiting for the object detection result sended back from server
-        try:
-            prediction_result, _ = edge.recvfrom(BUFF_SIZE)
-            prediction = pickle.loads(prediction_result)
-            end_time = time.time()
-            print("OFFLOADING TIME: ", end_time - start_time)
-        except socket.timeout:
-            print("prediction recieved time out")
-            continue
+		try:
+			prediction_result, _ = edge.recvfrom(BUFF_SIZE)
+			prediction = pickle.loads(prediction_result)
+			end_time = time.time()
+			print("OFFLOADING TIME: ", end_time - start_time)
+		except socket.timeout:
+			print("prediction recieved time out")
+			continue
 		
-        
-        
 		
-        
+		
+		
+		
 
