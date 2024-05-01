@@ -70,27 +70,32 @@ message = b'REQUEST from client'
 client_socket.sendto(message,(host_ip,port))
 fps,st,frames_to_count,cnt = (0,0,20,0)
 
+# setting time out of a socket so a loss packet will not block the whole pipeline
+client_socket.settimeout(0.1)
 while True:
-	packet,_ = client_socket.recvfrom(BUFF_SIZE)
-	data = base64.b64decode(packet,' /')
-	npdata = np.fromstring(data,dtype=np.uint8)
-	frame = cv2.imdecode(npdata,1)
+	try:
+		packet,_ = client_socket.recvfrom(BUFF_SIZE)
+		data = base64.b64decode(packet,' /')
+		npdata = np.fromstring(data,dtype=np.uint8)
+		frame = cv2.imdecode(npdata,1)
 
-	# Inferencing, record the time for referencing
-	start_time = time.time()
-	pil_image = Image.fromarray(frame)
-	prediction = detect_objects(pil_image)
-	end_time = time.time()
-	print(end_time - start_time)
-	
-	# send prediction back to server
-	serialized_tensor = pickle.dumps(prediction)
-	client_socket.sendto(serialized_tensor, (host_ip,port))
-	
-	# show the predicted 
-	frame = cv2.putText(frame,'FPS: '+str(fps),(10,40),cv2.FONT_HERSHEY_SIMPLEX,0.7,(0,0,255),2)
-	cv2.imshow('Object Detection', frame)
+		# Inferencing, record the time for referencing
+		start_time = time.time()
+		pil_image = Image.fromarray(frame)
+		prediction = detect_objects(pil_image)
+		end_time = time.time()
+		print(end_time - start_time)
 		
-	key = cv2.waitKey(1) & 0xFF
+		# send prediction back to server
+		serialized_tensor = pickle.dumps(prediction)
+		client_socket.sendto(serialized_tensor, (host_ip,port))
+		
+		# show the predicted 
+		frame = cv2.putText(frame,'FPS: '+str(fps),(10,40),cv2.FONT_HERSHEY_SIMPLEX,0.7,(0,0,255),2)
+		cv2.imshow('Object Detection', frame)
+			
+	except socket.timeout:
+		print()
+		continue
 
 

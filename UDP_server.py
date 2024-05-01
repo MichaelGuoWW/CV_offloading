@@ -118,8 +118,9 @@ vid = cv2.VideoCapture(gstreamer_pipeline(), cv2.CAP_GSTREAMER)
 fps,st,frames_to_count,cnt = (0,0,20,0)
 
 # variable indicating if it should offload or not, ALWAYS ASSUME NO OFFLOADING
-off_loading = False
+off_loading = True
 
+edge.settimeout(0.1)
 while(vid.isOpened()):
     # TODO: 
     # write a code to decide if the offloading should happen or not
@@ -149,10 +150,14 @@ while(vid.isOpened()):
         ec_img = base64.b64encode(buffer)
         edge.sendto(ec_img, EDGE_SERVER_IP)
 		# waiting for the object detection result sended back from server
-        prediction_result, _ = edge.recvfrom(BUFF_SIZE)
-        prediction = pickle.load(prediction_result)
-        end_time = time.time()
-        print("OFFLOADING TIME: ", end_time - start_time)
+        try:
+            prediction_result, _ = edge.recvfrom(BUFF_SIZE)
+            prediction = pickle.load(prediction_result)
+            end_time = time.time()
+            print("OFFLOADING TIME: ", end_time - start_time)
+        except socket.timeout:
+            print("prediction recieved time out")
+            continue
 		
         
         
