@@ -38,11 +38,11 @@ class edge:
             msg = (start_send_time, payload)
             encode_msg = pickle.dumps(msg)
             profiling_out.sendto(encode_msg, ('<broadcast>', self.PROFILING_PORT_OUT))
-            print("broadcasting to all ->>>>>>>>")
             time.sleep(0.1)
     
     # recieving profiling information from server and store it at 
     def profiling_in(self):
+        print("entered profiling in")
         # setting up profiler in 
         profiling_in = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
         # define the socket buffer size; buffer size should be big enough
@@ -84,9 +84,10 @@ class edge:
                 if self.server_info[address][0] == send_time:
                     continue
                 if delay_cnt % 10 == 0:
-                    self.server_info[address] = (send_time, cpu_info, gpu_info, delay_avg / 5, count)
+                    self.server_info[address] = (send_time, cpu_info, gpu_info, delay_avg / 10, count)
                     delay_avg = 0
                     delay_cnt = 0
+                    print("offboard delay: ", delay_avg / 10)
             else:
                 self.server_info[address] = (send_time, cpu_info, gpu_info, delay_avg, count)
     
