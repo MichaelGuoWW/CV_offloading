@@ -47,7 +47,7 @@ class server:
         profiling_out.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
         while True:
-            data, address = profiling_in.recvfrom(3096)
+            data, address = profiling_in.recvfrom(3096*2)
             start_time = time.time()
             # decode the data
             edge = pickle.loads(data)
@@ -55,12 +55,12 @@ class server:
             cpu_info = 0
             gpu_info = 0
             end_time = time.time()
-            # calculate the RRT
+            # calculate time used on profiling and decoding inputs
             profiling_time = end_time - start_time
-            print(send_time)
             msg = (cpu_info, gpu_info, profiling_time, send_time)
             encode_msg = pickle.dumps(msg)
-            profiling_out.sendto(encode_msg, address)
+            profiling_out.sendto(encode_msg, (address[0], self.PROFILING_PORT_OUT))
+            print(send_time)
         
 
 if __name__ == "__main__":

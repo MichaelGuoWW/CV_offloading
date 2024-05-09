@@ -17,12 +17,12 @@ class edge:
         self.DATA_PORT = 8080
         self.INFERENCE_PORT = 8081
         self.WIDTH=400       # Width of the frame to be sent
-        self.server_info = {}       # dictionary used to store 
+        self.server_info = {}       # dictionary used to store
+        self.freq_broadcasting = 1 
 
     # sent out a broadcast message in defined frequency
     # MESSAGE_TYPE: (start_send_time, )
     def profiling_out(self):
-        freq_broadcasting = 1
         # setting up profiler
         profiling_out = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
         # define the socket buffer size; buffer size should be big enough
@@ -32,7 +32,7 @@ class edge:
         # enable broadcasting mode
         profiling_out.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
-        interval = 1 / freq_broadcasting
+        interval = 1 / self.freq_broadcasting
         profiling_out.settimeout(interval)   # set time out so it won't be wasting resource
         while True:
             # set sent message
@@ -62,7 +62,7 @@ class edge:
         profiling_in.bind(socket_address)
 
         while True:
-            data, address = profiling_in.recvfrom(3096)
+            data, address = profiling_in.recvfrom(3096*2)
             recieve_time = time.time()
             # decode the data
             server_n = pickle.loads(data)
@@ -73,7 +73,11 @@ class edge:
             # calculate the RRT
             delay = recieve_time - send_time - profiling_time
 
+            # identify a threshold for preprocessing, if the delay is too big, no need to consider it
+            threshold = 0.05
             # store it in the server_info, check if ip adress already profiled due to UDP server duplicate packet
+            if delay > threshold:
+                    continue
             if address in self.server_info:
                 if self.server_info[address][0] == send_time:
                     continue
@@ -82,7 +86,7 @@ class edge:
             else:
                 self.server_info[address] = (send_time, cpu_info, gpu_info, delay)
 
-            print("the RRT is: ", delay)
+            print(address, "RRT is: ", delay)
     
     # profiler: combination of profiler_outport and profiler_inport
     def profiler(self):
