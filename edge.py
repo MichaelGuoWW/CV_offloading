@@ -42,7 +42,6 @@ class edge:
 
             # send the message
             profiling_out.sendto(encode_msg, ('<broadcast>', self.PROFILING_PORT_OUT))
-            print("broadcasting to all ->>>>>>>>")
             time.sleep(0.1)
 
     # recieving profiling information from server and store it at 
@@ -89,7 +88,7 @@ class edge:
                     self.server_info[address] = (send_time, cpu_info, gpu_info, delay, count)
             else:
                 self.server_info[address] = (send_time, cpu_info, gpu_info, delay, count)
-            print(address, "RRT is: ", delay)
+            print("offboard delay is: ", delay)
 
     # profiler: combination of profiler_outport and profiler_inport
     def profiler(self):
@@ -124,7 +123,7 @@ if __name__ == "__main__":
             # Detect objects in the frame
             detections = net.Detect(cuda_frame)
             end_time = time.time()
-            print(end_time - start_time)
+            print("onboard computing time: ", end_time - start_time)
 
 
     
