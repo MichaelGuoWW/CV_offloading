@@ -3,8 +3,8 @@ import numpy as np
 import time
 import base64
 import pickle
-# import jetson.utils
-# import jetson.inference
+import jetson_utils
+import jetson_inference
 import multiprocessing
 from PIL import Image, ImageDraw
 
@@ -56,6 +56,8 @@ class edge:
         socket_address = ("", self.PROFILING_PORT_IN)
         profiling_in.bind(socket_address)
 
+        delay_avg = 0
+        delay_cnt = 0
         while True:
             data, address = profiling_in.recvfrom(3096*2)
             recieve_time = time.time()
@@ -75,22 +77,18 @@ class edge:
 
             # calculate the RRT
             delay = recieve_time - send_time
+            delay_avg = delay_avg + delay
+            delay_cnt = delay_cnt + 1
 
-            # identify a threshold for preprocessing, if the delay is too big, no need to consider it
-            threshold = 0.05
-            # store it in the server_info, check if ip adress already profiled due to UDP server duplicate packet
-            if delay > threshold:
-                    continue
-            
             if address in self.server_info:
                 if self.server_info[address][0] == send_time:
                     continue
-                else:
-                    self.server_info[address] = (send_time, cpu_info, gpu_info, delay, count)
+                if delay_cnt % 10 == 0:
+                    self.server_info[address] = (send_time, cpu_info, gpu_info, delay_avg / 5, count)
+                    delay_avg = 0
+                    delay_cnt = 0
             else:
-                self.server_info[address] = (send_time, cpu_info, gpu_info, delay, count)
-
-            print(address, "RRT is: ", delay)
+                self.server_info[address] = (send_time, cpu_info, gpu_info, delay_avg, count)
     
     # profiler: combination of profiler_outport and profiler_inport
     def profiler(self):
@@ -99,13 +97,34 @@ class edge:
         profiling_out.start()
         profiling_in.start()
         # profiler running forever, no need to join the process
-        
 
 if __name__ == "__main__":
     edge_host = edge()
 
     # start profiler
     edge_host.profiler()
+
+    # read video source
+    vid = cv2.VideoCapture("test_video.mp4") 
+
+    # load AI model
+    net = jetson_inference.detectNet("ssd-mobilenet-v2", threshold=0.5)
+
+    offloading = False
+    while(vid.isOpened()):
+        _, frame = vid.read()
+
+        if not offloading:
+            # Convert the frame to RGBA format expected by Jetson Inference
+            rgba_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
+
+            # Convert the frame to jetson.utils.cudaImage
+            cuda_frame = jetson_utils.cudaFromNumpy(rgba_frame)
+
+            # Detect objects in the frame
+            detections = net.Detect(cuda_frame)
+
+
     
 
             
