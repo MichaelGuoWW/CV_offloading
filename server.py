@@ -58,8 +58,8 @@ class server:
             msg = (cpu_info, gpu_info, send_time, self.count)
             encode_msg = pickle.dumps(msg)
             profiling_out.sendto(encode_msg, (address[0], self.PROFILING_PORT_OUT))
+            print(address)
             print(send_time)
-            print(sys.getsizeof(encode_msg))
         
 
 if __name__ == "__main__":
