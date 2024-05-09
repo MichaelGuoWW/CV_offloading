@@ -57,17 +57,17 @@ class server:
             end_time = time.time()
             # calculate the RRT
             profiling_time = end_time - start_time
-
+            print(send_time)
             msg = (cpu_info, gpu_info, profiling_time, send_time)
-            encode_msg = pickle.dump(msg)
+            encode_msg = pickle.dumps(msg)
             profiling_out.sendto(encode_msg, address)
         
 
 if __name__ == "__main__":
-    edge_host = server()
+    server_host = server()
 
     # start profiler
-    server.profiler()
+    server_host.profiler()
     
 
             

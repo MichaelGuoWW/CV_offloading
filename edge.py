@@ -39,7 +39,7 @@ class edge:
             start_send_time = time.time()
             edge_ip = self.EDGE_HOST_IP
             msg = (start_send_time, edge_ip)
-            encode_msg = pickle.dump(msg)
+            encode_msg = pickle.dumps(msg)
 
             # send the message
             profiling_out.sendto(encode_msg, ('<broadcast>', self.PROFILING_PORT_OUT))
@@ -81,11 +81,13 @@ class edge:
                     self.server_info[address] = (send_time, cpu_info, gpu_info, delay)
             else:
                 self.server_info[address] = (send_time, cpu_info, gpu_info, delay)
+
+            print("the RRT is: ", delay)
     
     # profiler: combination of profiler_outport and profiler_inport
     def profiler(self):
         freq = 1
-        profiling_out = multiprocessing.Process(target=self.profiling_out, args=(freq))
+        profiling_out = multiprocessing.Process(target=self.profiling_out)
         profiling_in = multiprocessing.Process(target=self.profiling_in)
         profiling_out.start()
         profiling_in.start()
@@ -96,7 +98,7 @@ if __name__ == "__main__":
     edge_host = edge()
 
     # start profiler
-    edge.profiler()
+    edge_host.profiler()
     
 
             
