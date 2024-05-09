@@ -3,8 +3,8 @@ import numpy as np
 import time
 import base64
 import pickle
-import jetson.utils
-import jetson.inference
+# import jetson.utils
+# import jetson.inference
 import multiprocessing
 from PIL import Image, ImageDraw
 
@@ -21,7 +21,8 @@ class edge:
 
     # sent out a broadcast message in defined frequency
     # MESSAGE_TYPE: (start_send_time, )
-    def profiling_out(self, freq_broadcasting):
+    def profiling_out(self):
+        freq_broadcasting = 1
         # setting up profiler
         profiling_out = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
         # define the socket buffer size; buffer size should be big enough
