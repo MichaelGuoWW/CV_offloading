@@ -115,14 +115,15 @@ if __name__ == "__main__":
         _, frame = vid.read()
 
         if not offloading:
+            start_time = time.time()
             # Convert the frame to RGBA format expected by Jetson Inference
             rgba_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
-
             # Convert the frame to jetson.utils.cudaImage
             cuda_frame = jetson_utils.cudaFromNumpy(rgba_frame)
-
             # Detect objects in the frame
             detections = net.Detect(cuda_frame)
+            end_time = time.time()
+            print(end_time - start_time)
 
 
     
