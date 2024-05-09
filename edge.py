@@ -68,23 +68,33 @@ class edge:
             server_n = pickle.loads(data)
             cpu_info = server_n[0]
             gpu_info = server_n[1]
-            profiling_time = server_n[2]
-            send_time = server_n[3]
+            send_time = server_n[2]
+            count = server_n[3]
+
+            # check if there are lossed packets
+            if address in self.server_info:
+                prev_count = self.server_info[address][4]
+                if prev_count + 1 != count:
+                    # loss of packets occured, NOT resending, viewed as invalid
+                    continue
+
             # calculate the RRT
-            delay = recieve_time - send_time - profiling_time
+            delay = recieve_time - send_time
 
             # identify a threshold for preprocessing, if the delay is too big, no need to consider it
             threshold = 0.05
             # store it in the server_info, check if ip adress already profiled due to UDP server duplicate packet
             if delay > threshold:
                     continue
+            
+            # update the server_info dict
             if address in self.server_info:
                 if self.server_info[address][0] == send_time:
                     continue
                 else:
-                    self.server_info[address] = (send_time, cpu_info, gpu_info, delay)
+                    self.server_info[address] = (send_time, cpu_info, gpu_info, delay, count)
             else:
-                self.server_info[address] = (send_time, cpu_info, gpu_info, delay)
+                self.server_info[address] = (send_time, cpu_info, gpu_info, delay, count)
 
             print(address, "RRT is: ", delay)
     

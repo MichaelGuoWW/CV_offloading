@@ -11,6 +11,7 @@ import numpy as np
 import json
 import pickle
 import multiprocessing
+import sys
 
 
 class server:
@@ -20,7 +21,8 @@ class server:
         self.PROFILING_PORT_OUT = 9999       # EDGE_PROFILING_IN ---> SERVER_PROFILING_OUT
         self.DATA_PORT = 8080
         self.INFERENCE_PORT = 8081
-        self.WIDTH=400       # Width of the frame to be sent
+        self.WIDTH = 400       # Width of the frame to be sent
+        self.count = 0
     
     # recieving profiling information from server's broadcast
     def profiler(self):
@@ -43,8 +45,6 @@ class server:
         profiling_out.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, self.BUFF_SIZE)
         # enable reuse of port 
         profiling_out.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, True)
-        # enable broadcasting mode
-        profiling_out.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
         while True:
             data, address = profiling_in.recvfrom(3096*2)
@@ -55,12 +55,13 @@ class server:
             cpu_info = 0
             gpu_info = 0
             end_time = time.time()
-            # calculate time used on profiling and decoding inputs
-            profiling_time = end_time - start_time
-            msg = (cpu_info, gpu_info, profiling_time, send_time)
+            self.count = self.count + 1
+
+            msg = (cpu_info, gpu_info, send_time, self.count)
             encode_msg = pickle.dumps(msg)
             profiling_out.sendto(encode_msg, (address[0], self.PROFILING_PORT_OUT))
             print(send_time)
+            print(sys.getsizeof(encode_msg))
         
 
 if __name__ == "__main__":
