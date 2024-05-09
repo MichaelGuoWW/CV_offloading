@@ -18,7 +18,6 @@ class edge:
         self.INFERENCE_PORT = 8081
         self.WIDTH=400       # Width of the frame to be sent
         self.server_info = {}       # dictionary used to store
-        self.freq_broadcasting = 1 
 
     # sent out a broadcast message in defined frequency
     # MESSAGE_TYPE: (start_send_time, )
@@ -32,19 +31,15 @@ class edge:
         # enable broadcasting mode
         profiling_out.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
-        interval = 1 / self.freq_broadcasting
-        profiling_out.settimeout(interval)   # set time out so it won't be wasting resource
         while True:
-            # set sent message
-            start_send_time = time.time()
-            edge_ip = self.EDGE_HOST_IP
-            msg = (start_send_time, edge_ip)
-            encode_msg = pickle.dumps(msg)
-
             # send the message
+            start_send_time = time.time()
+            payload = "12345678"
+            msg = (start_send_time, payload)
+            encode_msg = pickle.dumps(msg)
             profiling_out.sendto(encode_msg, ('<broadcast>', self.PROFILING_PORT_OUT))
             print("broadcasting to all ->>>>>>>>")
-            time.sleep(interval)
+            time.sleep(0.1)
     
     # recieving profiling information from server and store it at 
     def profiling_in(self):
@@ -87,7 +82,6 @@ class edge:
             if delay > threshold:
                     continue
             
-            # update the server_info dict
             if address in self.server_info:
                 if self.server_info[address][0] == send_time:
                     continue
@@ -100,7 +94,6 @@ class edge:
     
     # profiler: combination of profiler_outport and profiler_inport
     def profiler(self):
-        freq = 1
         profiling_out = multiprocessing.Process(target=self.profiling_out)
         profiling_in = multiprocessing.Process(target=self.profiling_in)
         profiling_out.start()

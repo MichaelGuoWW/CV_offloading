@@ -48,13 +48,11 @@ class server:
 
         while True:
             data, address = profiling_in.recvfrom(3096*2)
-            start_time = time.time()
             # decode the data
             edge = pickle.loads(data)
             send_time = edge[0]
             cpu_info = 0
             gpu_info = 0
-            end_time = time.time()
             self.count = self.count + 1
 
             msg = (cpu_info, gpu_info, send_time, self.count)
