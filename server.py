@@ -49,6 +49,7 @@ class server:
 		self.data_rx.setsockopt(socket.SOL_SOCKET,socket.SO_RCVBUF, self.BUFF_SIZE)
 		# enable reuse of port 
 		self.data_rx.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, True)
+		
 	
 	# recieving profiling information from server's broadcast
 	def profiler(self):
@@ -74,8 +75,7 @@ class server:
 
 		while True:
 			data, address = profiling_in.recvfrom(3096*2)
-			# bind the socket to edge for future data transmit
-			self.data_rx.bind((address[0], self.DATA_PORT))
+
 			self.edge_host_ip = address[0]
 			# decode the data
 			edge = pickle.loads(data)
@@ -90,7 +90,7 @@ class server:
 			print(address)
 			print(send_time)
 		
-	def get_gpu_usage():
+	def get_gpu_usage(self):
 		try:
 			output = subprocess.check_output(['nvidia-smi', '--query-gpu=utilization.gpu', '--format=csv,noheader,nounits'])
 			gpu_usage = [int(x) for x in output.strip().split(b'\n')]
@@ -111,6 +111,9 @@ if __name__ == "__main__":
 	# Inference transmitting
 	count = 0
 	prev_count = 0
+
+	# bind the socket to edge for future data transmit
+	server_host.data_rx.bind(('192.168.0.142', server_host.DATA_PORT))
 	while True:
 		packet,_ = server_host.data_rx.recvfrom(server_host.BUFF_SIZE)
 		decode_data = pickle.loads(packet)
