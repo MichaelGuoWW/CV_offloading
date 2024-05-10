@@ -131,11 +131,11 @@ class edge:
 		profiling_in.start()
 		# profiler running forever, no need to join the process
 
-	def myCRC(data):
+	def myCRC(self, data):
 		crc32_func = crcmod.mkCrcFun(0x104c11db7, initCrc=0xFFFFFFFF, xorOut=0xFFFFFFFF)
 		return crc32_func(data)
 	
-	def get_gpu_usage():
+	def get_gpu_usage(self):
 		try:
 			output = subprocess.check_output(['nvidia-smi', '--query-gpu=utilization.gpu', '--format=csv,noheader,nounits'])
 			gpu_usage = [int(x) for x in output.strip().split(b'\n')]
@@ -186,6 +186,8 @@ if __name__ == "__main__":
 	offloading = False
 	frame_count = 0
 	while(vid.isOpened()):
+		if len(edge_host.server_info) == 0:
+			continue
 		_, frame = vid.read()
 
 		# TODO: determine offloading or not every 5
